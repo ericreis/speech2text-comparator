@@ -26,6 +26,10 @@ public class Transcript {
         this.confidence = .0f;
     }
 
+    public String getText() {
+        return this.text;
+    }
+
     public void update(SpeechRecognitionAlternative alternative) {
         this.text += alternative.getTranscript();
         this.wordsCount += alternative.getWordsCount();
