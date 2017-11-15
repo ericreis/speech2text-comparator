@@ -11,6 +11,7 @@ import services.GoogleCloudAudioRecognition;
 import services.GoogleCloudStorageService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import services.TextComparisonService;
 
 import java.io.FileInputStream;
 import java.net.URL;
@@ -33,41 +34,27 @@ public class Application {
         URL resourceUrl = Application.class.getClassLoader().getResource("audio/" + resourceName + ".wav");
         URL resourcesFolderUrl = Application.class.getClassLoader().getResource(".");
 
-        if (resourceUrl != null) {
-//            logger.info("Got resource: " + resourceUrl.getFile());
-//
-//            GoogleCloudStorageService googleCloudStorageService = new GoogleCloudStorageService();
-//            UploadedObject uploadedObject = googleCloudStorageService.uploadFile(resourceUrl,
-//                    Application.googleCloudBucketName);
-//
-//            logger.info("Uploaded object: " + uploadedObject);
-//
-//            GoogleCloudAudioRecognition googleCloudAudioRecognition = new GoogleCloudAudioRecognition();
-//            Transcript transcript = googleCloudAudioRecognition.asyncRecognizeGcs(uploadedObject.getGcsUri(),
-//                    "pt-BR");
-//
-//            transcript.dumpToFile(resourcesFolderUrl.getPath() + "transcript/" + resourceName + ".json");
+        if (resourceUrl != null && resourcesFolderUrl != null) {
+            logger.info("Got resource: " + resourceUrl.getFile());
 
-            Path path = Paths.get(resourcesFolderUrl.getFile() + "/transcript/leitura-em-nossa-vida-original.txt");
+            GoogleCloudStorageService googleCloudStorageService = new GoogleCloudStorageService();
+            UploadedObject uploadedObject = googleCloudStorageService.uploadFile(resourceUrl,
+                    Application.googleCloudBucketName);
+
+            logger.info("Uploaded object: " + uploadedObject);
+
+            GoogleCloudAudioRecognition googleCloudAudioRecognition = new GoogleCloudAudioRecognition();
+            Transcript transcript = googleCloudAudioRecognition.asyncRecognizeGcs(uploadedObject.getGcsUri(),
+                    "pt-BR");
+
+            TextComparisonService textComparisonService = new TextComparisonService();
+            Path path = Paths.get(resourcesFolderUrl.getPath() + "/transcript/leitura-em-nossa-vida-original.txt");
             String originalText = new String(Files.readAllBytes(path), "UTF-8")
                     .replaceAll("[\\p{Punct}]", "")
                     .toLowerCase();
+            transcript.setEvaluation(textComparisonService.evaluate(transcript.getText(), originalText));
 
-            Path jsonPath = Paths.get(resourcesFolderUrl.getFile() + "transcript/leitura-em-nossa-vida.json");
-            String jsonString = new String(Files.readAllBytes(jsonPath), "UTF-8");
-            Gson gson = new Gson();
-            Transcript transcript = gson.fromJson(jsonString, Transcript.class);
-
-            Levenshtein l = new Levenshtein();
-            System.out.println("Levenshtein distance = " + l.distance(originalText, transcript.getText()));
-
-            NGram ngram = new NGram(5);
-            System.out.println("NGram distance = " + ngram.distance(originalText, transcript.getText()));
-
-            Cosine cosine = new Cosine(5);
-            Map<String, Integer> profile1 = cosine.getProfile(originalText);
-            Map<String, Integer> profile2 = cosine.getProfile(transcript.getText());
-            System.out.println("Cosine similarity = " + cosine.similarity(profile1, profile2));
+            transcript.dumpToFile(resourcesFolderUrl.getPath() + "transcript/" + resourceName + ".json");
         }
     }
 }

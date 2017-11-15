@@ -1,6 +1,7 @@
 package domain.googlecloud;
 
 import com.google.cloud.speech.v1.SpeechRecognitionAlternative;
+import com.google.gson.Gson;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -17,8 +18,9 @@ public class Transcript {
     private String id;
     private String text;
     private float confidence;
-    
-    private int wordsCount;
+    private Evaluation evaluation;
+
+    private int charsCount;
 
     public Transcript(String id) {
         this.id = id;
@@ -30,11 +32,19 @@ public class Transcript {
         return this.text;
     }
 
+    public Evaluation getEvaluation() {
+        return evaluation;
+    }
+
+    public void setEvaluation(Evaluation evaluation) {
+        this.evaluation = evaluation;
+    }
+
     public void update(SpeechRecognitionAlternative alternative) {
         this.text += alternative.getTranscript();
-        this.wordsCount += alternative.getWordsCount();
-        this.confidence += this.wordsCount == 0 ? alternative.getConfidence() :
-                (alternative.getConfidence() * alternative.getWordsCount()) / this.wordsCount;
+        this.charsCount += alternative.getTranscript().length();
+        this.confidence += this.charsCount == 0 ? alternative.getConfidence() :
+                (alternative.getConfidence() * alternative.getTranscript().length()) / this.charsCount;
     }
 
     public void dumpToFile(String fileUrl) throws IOException {
@@ -42,8 +52,7 @@ public class Transcript {
     }
 
     public String asJsonString() {
-        return String.format("{ \n\t \"id\": \"%s\", \n\t \"text\": \"%s\", \n\t \"confidence\": %f \n }",
-                this.id, this.text, this.confidence);
+        return new Gson().toJson(this);
     }
 
     @Override
